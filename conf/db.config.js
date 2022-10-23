@@ -4,4 +4,5 @@ module.exports={
 	password:"123456",
 	port:"3306",
 	database:"shetuanguanli",
+	multipleStatements:true
 }

@@ -52,7 +52,7 @@ router.get('/getUserInfo',function(req,res,next){
 							authority:true,
 							children:false		
 						},{
-							label:'社团管理',
+							label:'全校社团结构管理',
 							iconClass:'iconfont icon-shouye',
 							authority:true,
 							children:[{
@@ -64,12 +64,22 @@ router.get('/getUserInfo',function(req,res,next){
 								path:'/shetuan/sectioninfo',
 								authority:results[0].userrole == 'admin'?true:false,								
 							}]		
+					},{
+							label:'本社团事务管理',
+							iconClass:'iconfont icon-shouye',
+							authority:true,
+							children:[{
+								label:'入社申请管理',
+								path:'/applyjoin/handleshetuanjoin',
+								authority:true,								
+							}]							
 					}],
 					permissions:req.query.qianduan!=='false'? false : {
-						'/index/seelifeCirel':true,
-						'/shetuan/addNew':results[0].userrole == 'admin'?true:false,	
+						'/index/seelifeCirel':true,	
 						'/shetuan/partyList':results[0].userrole == 'admin'?true:false,	
-						'/shetuan/sectioninfo':results[0].userrole == 'admin'?true:false,	
+						'/shetuan/sectioninfo':results[0].userrole == 'admin'?true:false,
+						'/applyjoin/handleshetuanjoin':true,
+						'/applyjoin/handlehuodongjoin':true	
 					}	
 				}
 			};			

@@ -171,7 +171,7 @@ router.post('/applyJoinOne',function(req,res,next){
 	insertflowObj.handleTime     = req.body.applytime 
 	insertflowObj.status         = 0
 	let insertlogObj             = new Object()
-	insertlogObj.step            = 1
+	insertlogObj.step            = 0
 	insertlogObj.optTime         = req.body.applytime
 	insertlogObj.optPersonName   = req.body.applystudentname
 	insertlogObj.optPersonId = req.body.applystudentid
@@ -417,7 +417,7 @@ router.post('/addNewSection',function(req,res,next){
 router.get('/selectChairMan',function (req,res,next) {
 	console.log(req.query.xuehao)
 	var sqlstr = 'select realname,xuehao from userinfo where xuehao = '+mysql.escape(req.query.xuehao) 
-	console.log(sqlstr)
+	
 	db.query(sqlstr,[],function(results,reject){
 		if(results.length != 0){
 			var ResultsObj = {
@@ -459,10 +459,10 @@ router.get('/fengjiexuehaostr',function(req,res,next){
 })
 
 
-// 获取 申请加入社团 列表 
+// 获取 学生端申请加入社团 列表 
 router.get('/getApplyPartyList',function(req,res,next){
 	var querid = req.query.id
-	var sqlstr = "select h1.joinpartyname,h2.name,h1.applytime,h1.status from  	( SELECT * from join_party_info where applystudentid = ? ) as h1  	 LEFT JOIN 	( SELECT name,id from sectioninfo ) as h2 on h1.joinsectionid = h2.id"
+	var sqlstr = "select h1.joinpartyname,h2.name,h1.applytime,h1.status,max(step) as step from  	( SELECT * from join_party_info where applystudentid = ? ) as h1  	 LEFT JOIN 	( SELECT name,id from sectioninfo ) as h2  on h1.joinsectionid = h2.id left join (SELECT step,mid from shetuan_log ) as h3 on h1.id = h3.mid"
 	db.query(sqlstr,[querid],function(results,fields){
 		if(results.length != 0){
 			var ResultsObj = {
@@ -480,4 +480,193 @@ router.get('/getApplyPartyList',function(req,res,next){
 	})
 })
 
+// 获取 社团端 申请加入社团列表 houtai:handleshetuanjoinlist
+router.post('/handleshetuanjoinlist',function(req,res,next){
+	var role 	    = req.body.role
+	var shetuanid   = req.body.shetuanid 
+	var currPage    = req.body.currPage		
+	var pageSize    = req.body.pageSize
+	var startPage   = (currPage-1)*pageSize
+	var qiansqlstr  = 'select h1.id,h1.applystudentname,h1.applystudentclass,h2.name as joinsectionname,h1.applytime,h1.status,h3.nextCheckPersonXuehao,h1.applytext from ((select * from join_party_info) as h1 left join (SELECT id,name from sectioninfo) as h2  on h1.joinsectionid = h2.id)  left join (SELECT mid,nextCheckPersonXuehao from shetuan_flow) as h3  on h1.id = h3.mid' 
+	var housqlstr   = '  limit '+startPage+","+pageSize
+	var resultObj   = {
+		resultCode: 1,
+		resultMsg:  "查询成功",
+		resultData: null,
+		total:      null							
+	}	
+	if(role == "admin"){
+		var selectsql = qiansqlstr+housqlstr
+		var wheresqlstr = '' 
+		var totalsqlstr = "select count(*) as total from join_party_info "+(wheresqlstr?wheresqlstr:'')
+		let chaxunlist    = new Promise(function(resolve,reject){
+			db.query(selectsql,[],function(results,fields){
+				if(results.length != 0){
+					resolve(results)
+				}
+			})
+		});	
+		let gettotal     = new Promise(function(resolve,reject){
+			db.query(totalsqlstr,[],function(results,fields){
+				if(results.length != 0){
+					resolve(results)
+				}					
+			})
+		})
+		Promise.all([chaxunlist,gettotal]).then((result)=>{
+			resultObj.resultData = result[0]  
+			resultObj.total      = result[1][0].total
+			res.send(resultObj)  
+		}).catch((error)=>{
+			console.log(2,error)
+		})					
+	}else{
+		var wheresqlstr = 'where joinpartyid = ?'
+		var selectsql   = qiansqlstr+wheresqlstr+housqlstr
+		var totalsqlstr = "select count(*) as total from join_party_info "+(wheresqlstr?wheresqlstr:'')
+		let chaxunlist  = new Promise(function(resolve,reject){
+			db.query(selectsql,[shetuanid,startPage,pageSize],function(results,fields){
+				if(results.length != 0){
+					resolve(results)
+				}
+			})
+		});	
+		let gettotal     = new Promise(function(resolve,reject){
+			db.query(totalsqlstr,[],function(results,fields){
+				if(results.length != 0){
+					resolve(results)
+				}					
+			})
+		})
+		Promise.all([chaxunlist,gettotal]).then((result)=>{
+			resultObj.resultData = result[0]  
+			resultObj.total      = result[1][0].total
+			res.send(resultObj)  
+		}).catch((error)=>{
+			console.log(2,result)
+		})		
+	}	
+})
+
+//社团端 获取个人 负责部门树 
+router.get('/handlefuzerentree',function(req,res,next){
+	var xuehao = req.query.studentxuehao
+	var sqlstr = 'SELECT A2.name as shetuanname ,A1.name as bumenname,A1.id as sectionid  from ((select name ,partyid,id from sectioninfo where chairmanxuehao like \'%'+xuehao+'%\') as A1 left join (SELECT name,id from shetuaninfo) as A2 on A1.partyid = A2.id)'
+
+	db.query(sqlstr,[],function(results,fields){
+		if(results.length != 0){
+			var ResultsObj = {
+				resultCode:1,
+				resultMsg:'查询成功',
+				resultData:results
+			};			
+		}else{
+			var ResultsObj = {
+				resultCode:0,
+				resultMsg:'无匹配人员',
+			};			
+		}		
+		res.send(ResultsObj)		
+	})
+})
+
+
+//社团端 处理学生初审 
+router.post('/handlechushenbiaodan',function(req,res,next){
+	var id 	    	  = req.body.id
+	var shifoutongguo = req.body.shifoutongguo 
+	var shuoming      = req.body.shuoming
+	var caozuozren    = req.body.realname
+	var caozuorenid   = req.body.userid
+	if(shifoutongguo  == 1 ){
+		//原此处查询学生学号 先查询操作人学号
+		//var selectfuzerensql = ' select h2.xuehao,h2.realname from((select applystudentid from join_party_info where id = ?) as h1 left join (SELECT id,xuehao,realname from userinfo) as h2 on h1.applystudentid = h2.id )'
+		var selectfuzerensql = ' select xuehao from userinfo where id = ?'
+		let selectfuzeren    = new Promise(function(resolve,reject){
+			//原此处查询学生学号 先查询操作人学号 原为id 现为caozuorenid
+			db.query(selectfuzerensql,[caozuorenid],function(results,fields){
+				if(results.length != 0){
+					resolve(results)
+				}else{
+					reject(fields)
+				}					
+			})
+		})
+		Promise.all([selectfuzeren]).then((result)=>{
+			var party_infosql  = 'update  join_party_info set status = 3 where id = ?;'
+			//原语句 需学生审核
+			//var shetuanflowsql = 'update  shetuan_flow set nextCheckPersonXuehao = ? ,nextCheckPersonName = ?;'
+			//先语句 不需要审核
+			var shetuanflowsql = 'update  shetuan_flow set nextCheckPersonXuehao = ? WHERE mid = ?;'
+			var shetuanlogsql  = 'INSERT INTO shetuan_log set optTime = now(),?;'
+			var        allsql  = party_infosql+shetuanflowsql+shetuanlogsql 
+			db.query(allsql,[id,result[0][0].xuehao,id,{optPersonName:caozuozren,optPersonId:caozuorenid,step:1,explain:shuoming,modulename:'joinparty',mid:id}],function(results1,fields){
+				console.log(results1)
+				if(results1.length != 0){
+					var ResultsObj = {
+						resultCode:1,
+						resultMsg:'操作成功',
+						resultData:null
+					};
+					res.send(ResultsObj)	
+				}				
+			})			
+		}).catch(function(res){
+			console.log(res)
+		})
+			
+
+
+	}
+
+})
+//社团端 处理学生一面 
+router.post('/handleyimianbiaodan',function(req,res,next){
+	//此id为partyinfo id
+	var id 	    	  = req.body.id
+	var shifoutongguo = req.body.shifoutongguo 
+	var shuoming      = req.body.shuoming
+	var caozuozren    = req.body.realname
+	var caozuorenid   = req.body.userid	
+	if(shifoutongguo  == 1 ){
+		//原此处查询学生学号 先查询操作人学号
+		//var selectfuzerensql = ' select h2.xuehao,h2.realname from((select applystudentid from join_party_info where id = ?) as h1 left join (SELECT id,xuehao,realname from userinfo) as h2 on h1.applystudentid = h2.id )'
+		var selectfuzerensql = ' select xuehao from userinfo where id = ?'
+		let selectfuzeren    = new Promise(function(resolve,reject){
+			//原此处查询学生学号 先查询操作人学号 原为id 现为caozuorenid
+			db.query(selectfuzerensql,[caozuorenid],function(results,fields){
+				if(results.length != 0){
+					resolve(results)
+				}else{
+					reject(fields)
+				}					
+			})
+		})
+		Promise.all([selectfuzeren]).then((result)=>{
+			var party_infosql  = 'update  join_party_info set status = 4 where id = ?;'
+			//原语句 需学生审核
+			//var shetuanflowsql = 'update  shetuan_flow set nextCheckPersonXuehao = ? ,nextCheckPersonName = ?;'
+			//先语句 不需要审核
+			var shetuanflowsql = 'update  shetuan_flow set nextCheckPersonXuehao = ? WHERE mid = ?;'
+			var shetuanlogsql  = 'INSERT INTO shetuan_log set optTime = now(),?;'
+			var        allsql  = party_infosql+shetuanflowsql+shetuanlogsql 
+			db.query(allsql,[id,result[0][0].xuehao,id,{optPersonName:caozuozren,optPersonId:caozuorenid,step:2,explain:shuoming,modulename:'joinparty',mid:id}],function(results1,fields){
+				console.log(results1)
+				if(results1.length != 0){
+					var ResultsObj = {
+						resultCode:1,
+						resultMsg:'操作成功',
+						resultData:null
+					};
+					res.send(ResultsObj)	
+				}				
+			})			
+		}).catch(function(res){
+			console.log(res)
+		})
+			
+
+
+	}	
+})
 module.exports = router;
