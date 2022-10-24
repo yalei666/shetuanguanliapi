@@ -487,7 +487,7 @@ router.post('/handleshetuanjoinlist',function(req,res,next){
 	var currPage    = req.body.currPage		
 	var pageSize    = req.body.pageSize
 	var startPage   = (currPage-1)*pageSize
-	var qiansqlstr  = 'select h1.id,h1.applystudentname,h1.applystudentclass,h2.name as joinsectionname,h1.applytime,h1.status,h3.nextCheckPersonXuehao,h1.applytext from ((select * from join_party_info) as h1 left join (SELECT id,name from sectioninfo) as h2  on h1.joinsectionid = h2.id)  left join (SELECT mid,nextCheckPersonXuehao from shetuan_flow) as h3  on h1.id = h3.mid' 
+	var qiansqlstr  = 'select h1.id,h1.applystudentname,h1.applystudentclass,h2.name as joinsectionname,h1.applytime,h1.status,h3.nextCheckPersonXuehao,h1.applytext,h1.joinpartyid,h1.joinsectionid from ((select * from join_party_info) as h1 left join (SELECT id,name from sectioninfo) as h2  on h1.joinsectionid = h2.id)  left join (SELECT mid,nextCheckPersonXuehao from shetuan_flow) as h3  on h1.id = h3.mid' 
 	var housqlstr   = '  limit '+startPage+","+pageSize
 	var resultObj   = {
 		resultCode: 1,
@@ -614,11 +614,7 @@ router.post('/handlechushenbiaodan',function(req,res,next){
 		}).catch(function(res){
 			console.log(res)
 		})
-			
-
-
 	}
-
 })
 //社团端 处理学生一面 
 router.post('/handleyimianbiaodan',function(req,res,next){
@@ -665,8 +661,75 @@ router.post('/handleyimianbiaodan',function(req,res,next){
 			console.log(res)
 		})
 			
-
-
 	}	
+})
+
+//社团端 处理学生二面 
+router.post('/handleermianbiaodan',function(req,res,next){
+	//此id为partyinfo id
+	var id 	    	  = req.body.id
+	var shifoutongguo = req.body.shifoutongguo 
+	var shuoming      = req.body.shuoming
+	var caozuozren    = req.body.realname
+	var caozuorenid   = req.body.userid	
+	var partyid   	  = req.body.partyid	
+	var sectionid     = req.body.sectionid	
+	if(shifoutongguo  == 1 ){
+		var selectfuzerensql = ' select h2.id from((select applystudentid from join_party_info where id = ?) as h1 left join (SELECT id,xuehao,realname from userinfo) as h2 on h1.applystudentid = h2.id )'
+		let selectfuzeren    = new Promise(function(resolve,reject){
+			//原此处查询学生学号 先查询操作人学号 原为id 现为caozuorenid
+			db.query(selectfuzerensql,[id],function(results,fields){
+				if(results.length != 0){
+					resolve(results)
+				}else{
+					reject(fields)
+				}					
+			})
+		})
+		Promise.all([selectfuzeren]).then((result)=>{
+			var party_infosql  = 'update  join_party_info set status = 1 where id = ?;'
+			//原语句 需学生审核
+			//var shetuanflowsql = 'update  shetuan_flow set nextCheckPersonXuehao = ? ,nextCheckPersonName = ?;'
+			//先语句 不需要审核
+			var shetuanflowsql = 'update  shetuan_flow set nextCheckPersonXuehao = 1 WHERE mid = ?;'
+			var shetuanlogsql  = 'INSERT INTO shetuan_log set optTime = now(),?;'
+			var xueinshesql    = "INSERT INTO xueshenginshetuan set ?"
+			var        allsql  = party_infosql+shetuanflowsql+shetuanlogsql+xueinshesql 
+			db.query(allsql,[id,id,{optPersonName:caozuozren,optPersonId:caozuorenid,step:2,explain:shuoming,modulename:'joinparty',mid:id},{shetuanid:partyid,bumenid:sectionid,mid:id,xueshengid:result[0][0].id}],function(results1,fields){
+				
+				if(results1.length != 0){
+					var ResultsObj = {
+						resultCode:1,
+						resultMsg:'操作成功',
+						resultData:null
+					};
+					res.send(ResultsObj)	
+				}				
+			})			
+		}).catch(function(res){
+			console.log(res)
+		})					
+	}	
+})
+
+// 社团端 获取社团部门学生列表
+router.post('/getbumenchengyuanlist',function(req,res,next){
+	var sectionid   = req.body.sectionid
+	var currPage    = req.body.currPage		
+	var pageSize    = req.body.pageSize
+	var startPage   = (currPage-1)*pageSize	
+	var listsqlstr  = "SELECT h2.xuehao as xuehao ,h2.userclass as xueshengbanji,h2.realname as xueshengname,h3.name as bumenname FROM (( select * from xueshenginshetuan where `bumenid` = ?  ) as h1 left join (SELECT * FROM userinfo ) as h2 on h1.xueshengid = h2.id left join (SELECT name,id FROM sectioninfo) as h3 on h1.bumenid = h3.id) limit ?,?;" 
+	var totalsqlstr = "SELECT count(*) as total FROM (( select * from xueshenginshetuan where `bumenid` = ?  ) as h1 left join (SELECT * FROM userinfo ) as h2 on h1.xueshengid = h2.id left join (SELECT name,id FROM sectioninfo) as h3 on h1.bumenid = h3.id)  "
+	var allsql      = listsqlstr+totalsqlstr 
+	db.query(allsql,[sectionid,startPage,pageSize,sectionid],function(results,fields){
+		if(results.length != 0){
+			var ResultsObj = {
+				resultCode:1,
+				resultMsg:'查询成功',
+				resultData:results
+			};
+			res.send(ResultsObj)	
+		}	
+	})
 })
 module.exports = router;

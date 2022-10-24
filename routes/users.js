@@ -72,6 +72,10 @@ router.get('/getUserInfo',function(req,res,next){
 								label:'入社申请管理',
 								path:'/applyjoin/handleshetuanjoin',
 								authority:true,								
+							},{
+								label:'本社人员管理',
+								path:'/mangeall/partymangerenyuan',
+								authority:true,										
 							}]							
 					}],
 					permissions:req.query.qianduan!=='false'? false : {
@@ -79,7 +83,8 @@ router.get('/getUserInfo',function(req,res,next){
 						'/shetuan/partyList':results[0].userrole == 'admin'?true:false,	
 						'/shetuan/sectioninfo':results[0].userrole == 'admin'?true:false,
 						'/applyjoin/handleshetuanjoin':true,
-						'/applyjoin/handlehuodongjoin':true	
+						'/applyjoin/handlehuodongjoin':true,
+						'/mangeall/partymangerenyuan':true	
 					}	
 				}
 			};			
