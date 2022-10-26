@@ -64,27 +64,37 @@ router.get('/getUserInfo',function(req,res,next){
 								path:'/shetuan/sectioninfo',
 								authority:results[0].userrole == 'admin'?true:false,								
 							}]		
-					},{
-							label:'本社团事务管理',
-							iconClass:'iconfont icon-shouye',
-							authority:true,
-							children:[{
-								label:'入社申请管理',
-								path:'/applyjoin/handleshetuanjoin',
-								authority:true,								
-							},{
-								label:'本社人员管理',
-								path:'/mangeall/partymangerenyuan',
-								authority:true,										
-							}]							
-					}],
+						},{
+								label:'本社团事务管理',
+								iconClass:'iconfont icon-shouye',
+								authority:true,
+								children:[{
+									label:'入社申请管理',
+									path:'/applyjoin/handleshetuanjoin',
+									authority:true,								
+								},{
+									label:'本社人员管理',
+									path:'/mangeall/partymangerenyuan',
+									authority:true,										
+								}]							
+						},{
+								label:'网站维护',
+								iconClass:'iconfont icon-shouye',
+								authority:true,
+								children:[{
+									label:'维护校园班级列表',
+									path:'/weihu/xiaoyuanliebiao',
+									authority:true,								
+								}]							
+						}],
 					permissions:req.query.qianduan!=='false'? false : {
 						'/index/seelifeCirel':true,	
 						'/shetuan/partyList':results[0].userrole == 'admin'?true:false,	
 						'/shetuan/sectioninfo':results[0].userrole == 'admin'?true:false,
 						'/applyjoin/handleshetuanjoin':true,
 						'/applyjoin/handlehuodongjoin':true,
-						'/mangeall/partymangerenyuan':true	
+						'/mangeall/partymangerenyuan':true,
+						'/weihu/xiaoyuanliebiao':results[0].userrole == 'admin'?true:false	
 					}	
 				}
 			};			
