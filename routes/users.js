@@ -83,7 +83,7 @@ router.get('/getUserInfo',function(req,res,next){
 								authority:true,
 								children:[{
 									label:'维护校园班级列表',
-									path:'/weihu/xiaoyuanliebiao',
+									path:'/weihu/banjiweihu',
 									authority:true,								
 								}]							
 						}],
@@ -94,7 +94,7 @@ router.get('/getUserInfo',function(req,res,next){
 						'/applyjoin/handleshetuanjoin':true,
 						'/applyjoin/handlehuodongjoin':true,
 						'/mangeall/partymangerenyuan':true,
-						'/weihu/xiaoyuanliebiao':results[0].userrole == 'admin'?true:false	
+						'/weihu/banjiweihu':results[0].userrole == 'admin'?true:false	
 					}	
 				}
 			};			

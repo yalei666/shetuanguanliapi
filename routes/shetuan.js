@@ -601,7 +601,7 @@ router.post('/handlechushenbiaodan',function(req,res,next){
 			var shetuanlogsql  = 'INSERT INTO shetuan_log set optTime = now(),?;'
 			var        allsql  = party_infosql+shetuanflowsql+shetuanlogsql 
 			db.query(allsql,[id,result[0][0].xuehao,id,{optPersonName:caozuozren,optPersonId:caozuorenid,step:1,explain:shuoming,modulename:'joinparty',mid:id}],function(results1,fields){
-				console.log(results1)
+				
 				if(results1.length != 0){
 					var ResultsObj = {
 						resultCode:1,
@@ -730,6 +730,41 @@ router.post('/getbumenchengyuanlist',function(req,res,next){
 			};
 			res.send(ResultsObj)	
 		}	
+	})
+})
+
+//社团端 维护班级list 获取一级
+router.post('/getbanjilistyiji',function(req,res,next){
+	var yijisqlstr  = "select * from banjilist where cengji = 0;"	
+	var erjisqlstr  = "select * from banjilist where cengji = 1"
+	var sqlsqlstr   = yijisqlstr+erjisqlstr	
+	db.query(sqlsqlstr,[],function(results,fields){
+
+		if(results.length != 0){
+			var ResultsObj = {
+				resultCode:1,
+				resultMsg:'查询成功',
+				resultData:results
+			};
+			res.send(ResultsObj)	
+		}			
+	})
+})
+
+//社团端 编辑班级name
+router.get('/editbanjiname',function(req,res,next){
+	var id           = req.query.id
+	var name         = req.query.newname
+	var updatesqlstr = "update banjilist set name = ?  where id = ?"  
+	db.query(updatesqlstr,[name,id],function(results,fields){
+				if(results.length != 0){
+					var ResultsObj = {
+						resultCode:1,
+						resultMsg:'操作成功',
+						resultData:null
+					};
+					res.send(ResultsObj)	
+				}			
 	})
 })
 module.exports = router;
